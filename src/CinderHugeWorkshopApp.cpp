@@ -10,106 +10,103 @@ using namespace std;
 class CinderHugeWorkshopApp : public AppNative {
   public:
 	void setup();
+    void mouseDown( MouseEvent event );
     void resize();
 	void update();
 	void draw();
     
-    Quatf                   mRotation;
     Matrix44f               mCubeRotation;
     CameraPersp             mCam;
-	Vec3f					mLightDirection;
+    Vec3f                   mLightDirection;
     ColorAf                 mColor;
-	params::InterfaceGlRef	mParams;
-    float                   mSize;
-    bool                    mWireframe, mFullscreen;
+    params::InterfaceGlRef  mParams;
+    float                   mCubeSize;
+    bool                    mFullscreen;
+    Quatf                   mRotation;
     
 };
 
 void CinderHugeWorkshopApp::setup()
 {
-    // camera
-    mCam.lookAt( Vec3f( 3, 2, -4 ), Vec3f::zero() );
+    Vec3f eyePoint(200.0f, 300.0f, -400.0f);
+    Vec3f target = Vec3f::zero();
     
+    mCam.lookAt(eyePoint, target);
     mCubeRotation.setToIdentity();
     
-    // set the light direction
-	mLightDirection = Vec3f( 0, 0, -1 );
+    mLightDirection = Vec3f(100,100,-400.0f);
     
-    // add a default color
-    mColor = ColorA(1,0,1);
+    mColor = ColorA(1.0f, 0.0f, 1.0f);
     
-    // Cube size
-    mSize = 2.0f;
+    mCubeSize = 200.0f;
     
-    // draw wireframe?
-    mWireframe = false;
-    
-    // fullscreen?
+    // draw fullscreen?
     mFullscreen = false;
     
-    // set up interface
-    mParams = params::InterfaceGl::create( getWindow(), "App parameters", toPixels( Vec2i( 200, 200 ) ) );
-    mParams->addParam( "Color", &mColor );
-    mParams->addParam( "Cube Rotation", &mRotation );
-    mParams->addParam( "Size", &mSize ).min(0.1f).max(20.0f).step(0.01f);
-    mParams->addParam( "Draw Wireframe", &mWireframe );
-    mParams->addParam( "Fullscreen", &mFullscreen );
+    mParams = params::InterfaceGl::create(getWindow(), "App Params", toPixels( Vec2f( 200, 200 )));
+    mParams->addParam("Cube Color", &mColor);
+    mParams->addParam("Rotation", &mRotation);
+    mParams->addParam("Size", &mCubeSize).min(20.0f).max(500.0f).precision(0.5f);
+    mParams->addParam("Draw Fullscreen", &mFullscreen);
+}
+
+void CinderHugeWorkshopApp::mouseDown(MouseEvent event)
+{
 }
 
 void CinderHugeWorkshopApp::resize()
 {
-    // now tell our Camera that the window aspect ratio has changed
-    mCam.setPerspective( 60, getWindowAspectRatio(), 1, 1000 );
-    
-    // and in turn, let OpenGL know we have a new camera
+    mCam.setPerspective( 60 , getWindowAspectRatio(), 1, 1000);
     gl::setMatrices( mCam );
 }
 
 void CinderHugeWorkshopApp::update()
 {
-    mCubeRotation.rotate( Vec3f( 1, 1, 1 ), toRadians(0.2f) );
-    
-    if (isFullScreen() != mFullscreen)
-    {
-        app::setFullScreen(mFullscreen);
+    if (isFullScreen() != mFullscreen) {
+        setFullScreen(mFullscreen);
     }
     
+    mCubeRotation.rotate( Vec3f( 1, 1, 1 ), toRadians(0.2f) );
 }
 
 void CinderHugeWorkshopApp::draw()
 {
     gl::enableDepthRead();
     gl::enableDepthWrite();
-	// clear out the window with black
+    
+    // clear out the window with black
 	gl::clear( Color( 0, 0, 0 ) );
     
-    gl::color(mColor);
+//    Vec2i pos = getMousePos();
+//    
+//    mColor = ColorAf(1.0f, lmap<float>(pos.x, 0.0f, (float)getWindowWidth(), 0.0f, 1.0f), 0.0f);
+    gl::color(ColorA::white());
     
     glLoadIdentity();
-    // enable the lighting
     glEnable( GL_LIGHTING );
     glEnable( GL_LIGHT0 );
-    // the light position
-    GLfloat lightPosition[] = { -mLightDirection.x, -mLightDirection.y, -mLightDirection.z, 0 };
-    glLightfv( GL_LIGHT0, GL_POSITION, lightPosition );
-    // the material
-    glMaterialfv( GL_FRONT, GL_DIFFUSE,	mColor );
+    GLfloat lightPosition[] = {
+        -mLightDirection.x,
+        -mLightDirection.y,
+        -mLightDirection.z,
+        0
+    };
     
-    gl::setMatrices( mCam );
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mColor);
     
-    Vec3f size(mSize, mSize, mSize);
+    gl::setMatrices(mCam);
+    
+    Vec3f size(mCubeSize, mCubeSize, mCubeSize);
     
     glPushMatrix();
-        if (mWireframe) gl::enableWireframe();
         gl::rotate(mRotation);
         gl::multModelView( mCubeRotation );
         gl::drawCube( Vec3f::zero(), size );
-        gl::disableWireframe();
     glPopMatrix();
     
-    // draw interface
+    // draw the params
     mParams->draw();
-    
 }
 
 CINDER_APP_NATIVE( CinderHugeWorkshopApp, RendererGl )
